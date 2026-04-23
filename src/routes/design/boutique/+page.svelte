@@ -287,11 +287,7 @@
   .stat-card .v {
     font: 700 1.5rem / 1.1 var(--font-sans);
     letter-spacing: -0.02em;
-    color: var(--accent);
-  }
-
-  :global(.dark) .stat-card .v {
-    color: #fb923c;
+    color: inherit;
   }
 
   .stat-card .l {
@@ -416,15 +412,17 @@
 
   .rooms .pill {
     padding: 0.375rem 0.875rem;
-    background: rgba(194, 65, 12, 0.08);
-    color: var(--accent);
+    background: rgba(120, 53, 15, 0.06);
+    color: inherit;
+    border: 1px solid var(--form-border);
     border-radius: 999px;
     font: 500 0.8rem var(--font-sans);
+    opacity: 0.85;
   }
 
   :global(.dark) .rooms .pill {
-    background: rgba(234, 88, 12, 0.15);
-    color: #fb923c;
+    background: rgba(234, 88, 12, 0.06);
+    border-color: var(--form-border-dark);
   }
 
   .contact-wrap {
