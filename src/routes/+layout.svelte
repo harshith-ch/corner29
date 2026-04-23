@@ -31,9 +31,6 @@
   }
 
   .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 20;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -69,11 +66,5 @@
 
   :global(.dark) .footer {
     border-top-color: rgba(255, 255, 255, 0.08);
-  }
-
-  .footer .muted {
-    opacity: 0.5;
-    margin-top: 0.25rem;
-    font-weight: 400;
   }
 </style>

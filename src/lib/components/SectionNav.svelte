@@ -12,7 +12,13 @@
 
   let { sections }: Props = $props();
 
-  let active = $state<string>(sections[0]?.id ?? '');
+  // Seed active with the first section id once; subsequent changes come from
+  // user clicks and the IntersectionObserver below. Reading `sections` inline
+  // in $state captures only the initial value — wrap in an untracked getter.
+  let active = $state<string>('');
+  $effect.pre(() => {
+    if (!active) active = sections[0]?.id ?? '';
+  });
   let navEl: HTMLElement | undefined = $state();
 
   onMount(() => {
@@ -61,12 +67,7 @@
 
 <style>
   .section-nav {
-    position: sticky;
-    top: 3.5rem;
-    z-index: 10;
     background: color-mix(in oklab, currentColor 3%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
 

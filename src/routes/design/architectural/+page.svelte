@@ -6,11 +6,13 @@
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
   import { page } from '$app/state';
+  import { browser } from '$app/environment';
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
+  // Guard with `browser` — searchParams can't be read during prerender.
   const showContact = $derived(
-    ['1', 'true'].includes(page.url.searchParams.get('contact') ?? '')
+    browser && ['1', 'true'].includes(page.url.searchParams.get('contact') ?? '')
   );
   const sections = $derived(
     [

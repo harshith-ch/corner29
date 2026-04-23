@@ -6,19 +6,18 @@
 
   let { src, title }: Props = $props();
 
+  let viewerEl: HTMLDivElement | undefined = $state();
   let viewport: HTMLDivElement | undefined = $state();
   let stageEl: HTMLDivElement | undefined = $state();
   let tx = $state(0);
   let ty = $state(0);
   let scale = $state(1);
   let loaded = $state(false);
+  let isFullscreen = $state(false);
   let vbX = $state(0);
   let vbY = $state(0);
   let vbW = $state(1000);
   let vbH = $state(1000);
-  // Fit only on the very first floor load; preserve the user's zoom/pan when
-  // they switch floors so the view stays consistent.
-  let hasFitOnce = false;
   // Tight content bounding box (excludes the background rect). These default
   // to the viewBox and get refined to the geometry's real extent after mount.
   let contentX = $state(0);
@@ -44,12 +43,11 @@
     ty = (rect.height - contentH * s) / 2 - (contentY - vbY) * s;
   }
 
-  // After render, measure the real geometry extent (skipping the bg <rect>)
-  // by querying the first content <g> and taking its getBBox.
-  // getBBox on the <svg> returns the union bbox of all children in viewBox
-  // coords, accounting for any child transforms (including the DXF exporter's
-  // scale(1,-1) flip). Because we strip the full-viewBox background <rect>
-  // during parse, this bbox is tight to the actual geometry.
+  // After render, measure the real geometry extent. getBBox on the <svg>
+  // returns the union bbox of all children in viewBox coords, accounting for
+  // child transforms (including the DXF exporter's scale(1,-1) flip). Since
+  // loadSvg strips the full-viewBox background <rect> and any stray outline
+  // paths before mounting, this bbox is tight to the actual drawing.
   function measureContent() {
     if (!stageEl) return;
     const svg = stageEl.querySelector('svg') as unknown as SVGGraphicsElement | null;
@@ -57,11 +55,20 @@
     try {
       const bbox = svg.getBBox();
       if (bbox.width > 0 && bbox.height > 0) {
-        contentX = bbox.x;
-        contentY = bbox.y;
-        contentW = bbox.width;
-        contentH = bbox.height;
-        return;
+        // Intersect with the viewBox as a safety net — if any stray geometry
+        // survived the text-level scrub in loadSvg(), don't let it distort
+        // the fit. Clamping to the viewBox is what the author intended.
+        const x0 = Math.max(bbox.x, vbX);
+        const y0 = Math.max(bbox.y, vbY);
+        const x1 = Math.min(bbox.x + bbox.width, vbX + vbW);
+        const y1 = Math.min(bbox.y + bbox.height, vbY + vbH);
+        if (x1 > x0 && y1 > y0) {
+          contentX = x0;
+          contentY = y0;
+          contentW = x1 - x0;
+          contentH = y1 - y0;
+          return;
+        }
       }
     } catch {
       // getBBox can throw on detached elements; fall through to viewBox.
@@ -98,18 +105,49 @@
       // full-viewBox background <rect> the DXF exporter inserts as the first
       // child — otherwise getBBox() on the svg would return the viewBox bounds
       // (with all its empty margin) instead of the real geometry bbox.
-      svgMarkup = text
+      let cleaned = text
         .replace(/^<\?xml[^?]*\?>\s*/, '')
         .replace(/<rect\b[^>]*fill\s*=\s*"white"[^>]*\/>/i, '');
-      loaded = true;
-      // Wait for the DOM to mount the SVG, then measure. Only fit on first
-      // load — subsequent floor switches keep the current zoom/pan.
-      await new Promise(requestAnimationFrame);
-      measureContent();
-      if (!hasFitOnce) {
-        fit();
-        hasFitOnce = true;
+
+      // DXF exports can contain a stray outline path spanning well beyond the
+      // authored viewBox (floor 2 has one ~3× the viewBox width). Left in,
+      // it drags the fit bbox and shrinks the real plan by a large factor.
+      // Strip any <path> whose d-attribute coord extents exceed 2× the
+      // viewBox in either axis.
+      if (vbW > 0 && vbH > 0) {
+        const strayW = vbW * 2;
+        const strayH = vbH * 2;
+        cleaned = cleaned.replace(
+          /<path\b[^>]*\bd\s*=\s*"([^"]*)"[^>]*\/>/g,
+          (match, d: string) => {
+            const nums = d.match(/-?\d+(?:\.\d+)?/g);
+            if (!nums || nums.length < 4) return match;
+            let xMin = Infinity,
+              xMax = -Infinity,
+              yMin = Infinity,
+              yMax = -Infinity;
+            for (let i = 0; i + 1 < nums.length; i += 2) {
+              const x = parseFloat(nums[i]);
+              const y = parseFloat(nums[i + 1]);
+              if (x < xMin) xMin = x;
+              if (x > xMax) xMax = x;
+              if (y < yMin) yMin = y;
+              if (y > yMax) yMax = y;
+            }
+            if (xMax - xMin > strayW || yMax - yMin > strayH) return '';
+            return match;
+          }
+        );
       }
+
+      svgMarkup = cleaned;
+      loaded = true;
+      // Wait for the DOM to mount the SVG, then measure and fit to the new
+      // floor's geometry. Each floor plan has its own extent so re-fitting on
+      // every load picks an appropriate zoom level per plan.
+      await new Promise((r) => setTimeout(r, 50));
+      measureContent();
+      fit();
     } catch (e) {
       console.error('failed to load floor plan', url, e);
     }
@@ -168,15 +206,38 @@
     scale = next;
   }
 
+  async function toggleFullscreen() {
+    if (!viewerEl) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await viewerEl.requestFullscreen();
+      }
+    } catch (e) {
+      console.error('fullscreen toggle failed', e);
+    }
+  }
+
+  function onFullscreenChange() {
+    isFullscreen = document.fullscreenElement === viewerEl;
+    // Viewport size changed — re-fit so the plan scales to the new bounds.
+    requestAnimationFrame(() => {
+      fit();
+    });
+  }
+
   $effect(() => {
     loadSvg(src);
   });
 
-  // Don't auto-fit on resize — preserves the user's zoom/pan across viewport
-  // changes too. They can tap the Fit button if things go off-screen.
+  $effect(() => {
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  });
 </script>
 
-<div class="viewer">
+<div class="viewer" bind:this={viewerEl} class:fullscreen={isFullscreen}>
   <div
     class="viewport"
     bind:this={viewport}
@@ -207,6 +268,14 @@
       <button type="button" onclick={() => zoomBy(1.3)} aria-label="Zoom in">+</button>
       <button type="button" onclick={() => zoomBy(1 / 1.3)} aria-label="Zoom out">−</button>
       <button type="button" onclick={fit} aria-label="Fit to view" title="Fit to view">⤢</button>
+      <button
+        type="button"
+        onclick={toggleFullscreen}
+        aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+        title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+      >
+        {isFullscreen ? '×' : '⛶'}
+      </button>
     </div>
 
     <div class="hint">drag to pan · scroll to zoom</div>
@@ -221,6 +290,10 @@
     overflow: hidden;
     border-radius: inherit;
     background: var(--viewer-bg, #f5f5f4);
+  }
+
+  .viewer.fullscreen {
+    border-radius: 0;
   }
 
   :global(.dark) .viewer {
