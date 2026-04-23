@@ -4,12 +4,21 @@
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
+  import SectionNav from '$lib/components/SectionNav.svelte';
   import { page } from '$app/state';
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
   const showContact = $derived(
     ['1', 'true'].includes(page.url.searchParams.get('contact') ?? '')
+  );
+  const sections = $derived(
+    [
+      { id: 'overview', label: 'Opening' },
+      { id: 'location', label: 'Where' },
+      { id: 'floors', label: 'Floor by floor' },
+      ...(showContact ? [{ id: 'contact', label: 'To visit' }] : [])
+    ]
   );
 </script>
 
@@ -24,8 +33,10 @@
 </svelte:head>
 
 <div class="variant">
+  <SectionNav {sections} />
+
   <!-- Hero -->
-  <section class="hero">
+  <section class="hero" id="overview">
     <div class="kicker">
       <span>Corner29</span>
       <span>·</span>
@@ -52,7 +63,7 @@
   </section>
 
   <!-- Location -->
-  <section class="section">
+  <section class="section" id="location">
     <div class="section-head">
       <h2>Where</h2>
     </div>
@@ -167,6 +178,44 @@
   .hero {
     padding: clamp(3rem, 8vw, 6rem) 0 3rem;
     text-align: left;
+  }
+
+  .hero,
+  .section {
+    scroll-margin-top: 7rem;
+  }
+
+  .variant :global(.section-nav) {
+    margin: 0 -1.5rem;
+    border-bottom: 1px solid var(--form-border);
+  }
+
+  :global(.dark) .variant :global(.section-nav) {
+    border-bottom-color: var(--form-border-dark);
+  }
+
+  .variant :global(.section-nav-inner) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    max-width: 920px;
+  }
+
+  .variant :global(.section-nav-link) {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 0.95rem;
+    border-radius: 0.25rem;
+  }
+
+  .variant :global(.section-nav-link.active) {
+    background: transparent;
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  :global(.dark) .variant :global(.section-nav-link.active) {
+    background: transparent;
+    color: #a8c5b5;
   }
 
   .kicker {

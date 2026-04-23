@@ -4,12 +4,21 @@
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
+  import SectionNav from '$lib/components/SectionNav.svelte';
   import { page } from '$app/state';
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
   const showContact = $derived(
     ['1', 'true'].includes(page.url.searchParams.get('contact') ?? '')
+  );
+  const sections = $derived(
+    [
+      { id: 'overview', label: 'Overview' },
+      { id: 'location', label: 'Location' },
+      { id: 'floors', label: 'Plans' },
+      ...(showContact ? [{ id: 'contact', label: 'Enquiry' }] : [])
+    ]
   );
 </script>
 
@@ -18,8 +27,10 @@
 </svelte:head>
 
 <div class="variant">
+  <SectionNav {sections} />
+
   <!-- Hero -->
-  <section class="hero grid">
+  <section class="hero grid" id="overview">
     <div class="col-meta">
       <div class="ref">01 — Corner29</div>
       <div class="coords">17.4637° N · 78.3636° E</div>
@@ -44,7 +55,7 @@
   </section>
 
   <!-- Location -->
-  <section class="section grid">
+  <section class="section grid" id="location">
     <div class="col-meta">
       <div class="ref mono">02 — Site</div>
     </div>
@@ -196,6 +207,45 @@
   .hero {
     padding: clamp(3rem, 8vw, 6rem) 0 4rem;
     align-items: start;
+  }
+
+  .hero,
+  .section {
+    scroll-margin-top: 7rem;
+  }
+
+  .variant :global(.section-nav) {
+    margin: 0 -1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  }
+
+  :global(.dark) .variant :global(.section-nav) {
+    border-bottom-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .variant :global(.section-nav-inner) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    max-width: 1280px;
+  }
+
+  .variant :global(.section-nav-link) {
+    border-radius: 0;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+
+  .variant :global(.section-nav-link.active) {
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+  }
+
+  :global(.dark) .variant :global(.section-nav-link.active) {
+    background: var(--btn-bg-dark);
+    color: var(--btn-fg-dark);
   }
 
   .ref {

@@ -4,12 +4,21 @@
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
+  import SectionNav from '$lib/components/SectionNav.svelte';
   import { page } from '$app/state';
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
   const showContact = $derived(
     ['1', 'true'].includes(page.url.searchParams.get('contact') ?? '')
+  );
+  const sections = $derived(
+    [
+      { id: 'overview', label: 'Overview' },
+      { id: 'location', label: 'Location' },
+      { id: 'floors', label: 'Floor plans' },
+      ...(showContact ? [{ id: 'contact', label: 'Visit' }] : [])
+    ]
   );
 </script>
 
@@ -18,8 +27,10 @@
 </svelte:head>
 
 <div class="variant">
+  <SectionNav {sections} />
+
   <!-- Hero -->
-  <section class="hero">
+  <section class="hero" id="overview">
     <div class="badge">Now leasing · Kondapur</div>
     <h1>A corner office<br />with <em>room to breathe</em>.</h1>
     <p class="lede">{listing.pitch}</p>
@@ -148,6 +159,20 @@
 
   .hero {
     padding: clamp(3rem, 8vw, 5.5rem) 0 3rem;
+  }
+
+  .variant :global(.section-nav) {
+    margin: 0 -1.5rem;
+  }
+
+  .variant :global(.section-nav-inner) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .hero,
+  .section {
+    scroll-margin-top: 7rem;
   }
 
   .badge {

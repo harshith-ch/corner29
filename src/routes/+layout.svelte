@@ -22,7 +22,6 @@
 
 <footer class="footer">
   <div>Corner29 · G+4 Office for Lease · Kondapur</div>
-  <div class="muted">Static preview — pick a design to finalize.</div>
 </footer>
 
 <style>

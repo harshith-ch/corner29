@@ -65,10 +65,6 @@
   {#if open}
     <div role="menu" class="menu">
       <div class="menu-title">Design variants</div>
-      <a href="/" role="menuitem" class="item" class:active={!current} onclick={close}>
-        <span class="item-label">Overview</span>
-        <span class="item-hint">Pick a variant</span>
-      </a>
       {#each variants as v (v.slug)}
         <a
           href="/design/{v.slug}"
