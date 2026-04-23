@@ -1,0 +1,11 @@
+node_modules
+.svelte-kit
+build
+archived
+dxf-svg
+svg
+.DS_Store
+*.log
+.git
+.env
+.env.*

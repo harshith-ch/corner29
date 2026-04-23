@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx svelte-kit *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"/ => %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"/design/commercial => %{http_code}\\\\n\" http://localhost:5173/design/commercial)",
+      "Bash(curl -s -o /dev/null -w \"/design/architectural => %{http_code}\\\\n\" http://localhost:5173/design/architectural)",
+      "Bash(curl -s -o /dev/null -w \"/design/boutique => %{http_code}\\\\n\" http://localhost:5173/design/boutique)",
+      "Bash(curl -s -o /dev/null -w \"/design/editorial => %{http_code}\\\\n\" http://localhost:5173/design/editorial)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/design/commercial)",
+      "Bash(node -e ' *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"vite dev\")",
+      "Bash(ipconfig getifaddr *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
