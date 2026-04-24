@@ -5,8 +5,12 @@
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
+  onMount(() => prefetchSvgs(listing.floors.map((f) => f.svg)));
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
@@ -86,9 +90,6 @@
         <FloorSlider floors={listing.floors} {selected} onSelect={(k) => (selected = k)} />
       </div>
       <div class="plan-layout">
-        <div class="plan-body">
-          <FloorPlanViewer src={current.svg} title={current.title} />
-        </div>
         <div class="slider-desktop">
           <FloorSlider
             floors={listing.floors}
@@ -97,14 +98,17 @@
             orientation="vertical"
           />
         </div>
-      </div>
-      {#if current.rooms?.length}
-        <div class="rooms">
-          {#each current.rooms as r}
-            <span class="pill">{r}</span>
-          {/each}
+        <div class="plan-body">
+          <FloorPlanViewer src={current.svg} title={current.title} />
         </div>
-      {/if}
+        {#if current.rooms?.length}
+          <div class="rooms">
+            {#each current.rooms as r}
+              <span class="pill">{r}</span>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </section>
 
@@ -382,7 +386,7 @@
     }
     .slider-desktop {
       display: flex;
-      align-self: center;
+      align-self: flex-start;
     }
   }
 
@@ -394,8 +398,9 @@
 
   @media (min-width: 900px) {
     .plan-layout {
-      grid-template-columns: 1fr auto;
-      align-items: stretch;
+      grid-template-columns: auto 1fr 14rem;
+      align-items: start;
+      gap: 1.25rem;
     }
   }
 
@@ -409,7 +414,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1.25rem;
+    align-content: flex-start;
   }
 
   .rooms .pill {

@@ -5,8 +5,12 @@
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
+  onMount(() => prefetchSvgs(listing.floors.map((f) => f.svg)));
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
@@ -96,33 +100,31 @@
     </p>
 
     <div class="plan-spread">
-      <aside class="plan-aside">
-        <div class="floor-eyebrow">{current.key} — {current.title}</div>
-        {#if current.summary}<div class="floor-summary">{current.summary}</div>{/if}
-        {#if current.rooms?.length}
-          <ul class="rooms">
-            {#each current.rooms as r}
-              <li>{r}</li>
-            {/each}
-          </ul>
-        {/if}
-      </aside>
-      <div class="plan-main">
-        <div class="slider-wrap slider-mobile">
-          <FloorSlider floors={listing.floors} {selected} onSelect={(k) => (selected = k)} />
+      <div class="slider-wrap slider-mobile">
+        <FloorSlider floors={listing.floors} {selected} onSelect={(k) => (selected = k)} />
+      </div>
+      <div class="plan-layout">
+        <aside class="plan-side">
+          <div class="floor-eyebrow">{current.key} — {current.title}</div>
+          {#if current.summary}<div class="floor-summary">{current.summary}</div>{/if}
+          {#if current.rooms?.length}
+            <ul class="rooms">
+              {#each current.rooms as r}
+                <li>{r}</li>
+              {/each}
+            </ul>
+          {/if}
+        </aside>
+        <div class="plan-frame">
+          <FloorPlanViewer src={current.svg} title={current.title} />
         </div>
-        <div class="plan-layout">
-          <div class="plan-frame">
-            <FloorPlanViewer src={current.svg} title={current.title} />
-          </div>
-          <div class="slider-desktop">
-            <FloorSlider
-              floors={listing.floors}
-              {selected}
-              onSelect={(k) => (selected = k)}
-              orientation="vertical"
-            />
-          </div>
+        <div class="slider-desktop">
+          <FloorSlider
+            floors={listing.floors}
+            {selected}
+            onSelect={(k) => (selected = k)}
+            orientation="vertical"
+          />
         </div>
       </div>
     </div>
@@ -162,7 +164,7 @@
     --input-bg: #ffffff;
     --input-bg-dark: #0e1410;
 
-    max-width: 920px;
+    max-width: 1280px;
     margin: 0 auto;
     padding: 0 1.5rem;
   }
@@ -199,7 +201,7 @@
   .variant :global(.section-nav-inner) {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
-    max-width: 920px;
+    max-width: 1280px;
   }
 
   .variant :global(.section-nav-link) {
@@ -333,26 +335,9 @@
   }
 
   .plan-spread {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-
-  @media (min-width: 900px) {
-    .plan-spread {
-      grid-template-columns: 1fr 2.2fr;
-      align-items: start;
-    }
-  }
-
-  .plan-aside {
-    padding: 1.25rem 0;
-    border-top: 1px solid var(--form-border);
-    border-bottom: 1px solid var(--form-border);
-  }
-
-  :global(.dark) .plan-aside {
-    border-color: var(--form-border-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .floor-eyebrow {
@@ -360,26 +345,33 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
     opacity: 0.5;
-    margin-bottom: 0.375rem;
   }
 
   .floor-summary {
     font: 400 1rem / 1.5 var(--serif);
     font-style: italic;
     opacity: 0.8;
-    margin-bottom: 1rem;
   }
 
   .rooms {
     list-style: none;
     padding: 0;
     margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.5rem;
+  }
+
+  @media (min-width: 900px) {
+    .rooms {
+      grid-template-columns: 1fr;
+    }
   }
 
   .rooms li {
     font: 400 0.9rem / 1.6 var(--serif);
     opacity: 0.85;
-    padding: 0.375rem 0;
+    padding: 0.5rem 0;
     border-bottom: 1px dashed var(--form-border);
   }
 
@@ -403,7 +395,7 @@
     }
     .slider-desktop {
       display: flex;
-      align-self: center;
+      align-self: flex-start;
     }
   }
 
@@ -415,9 +407,16 @@
 
   @media (min-width: 900px) {
     .plan-layout {
-      grid-template-columns: 1fr auto;
-      align-items: stretch;
+      grid-template-columns: 14rem 1fr auto;
+      align-items: start;
+      gap: 1.5rem;
     }
+  }
+
+  .plan-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .plan-frame {
