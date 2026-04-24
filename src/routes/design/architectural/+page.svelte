@@ -15,6 +15,7 @@
 
   let selected = $state<FloorKey>('G');
   let openCamera = $state<Camera | null>(null);
+  let showCameras = $state(true);
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
   // Guard with `browser` — searchParams can't be read during prerender.
   const showContact = $derived(
@@ -106,12 +107,18 @@
             <span class="mono tiny">{current.key}</span>
             <span class="ttl">{current.title}</span>
             {#if current.summary}<span class="sum">— {current.summary}</span>{/if}
+            {#if current.cameras?.length}
+              <label class="cam-toggle">
+                <input type="checkbox" bind:checked={showCameras} />
+                <span>Cameras</span>
+              </label>
+            {/if}
           </div>
           <div class="plan-body">
             <FloorPlanViewer
               src={current.svg}
               title={current.title}
-              cameras={current.cameras}
+              cameras={showCameras ? current.cameras : []}
               onCameraOpen={(c) => (openCamera = c)}
             />
           </div>
@@ -416,6 +423,29 @@
   .plan-head .sum {
     opacity: 0.6;
     font-size: 0.8rem;
+  }
+
+  .cam-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font: 500 0.72rem var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .cam-toggle input {
+    accent-color: var(--accent);
+    cursor: pointer;
+    margin: 0;
+  }
+
+  :global(.dark) .cam-toggle input {
+    accent-color: var(--btn-bg-dark);
   }
 
   .plan-body {
