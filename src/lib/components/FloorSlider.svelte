@@ -70,7 +70,7 @@
   }
 
   .slider.vertical {
-    flex-direction: column;
+    flex-direction: column-reverse;
     overflow-x: visible;
     overflow-y: auto;
     scroll-snap-type: y mandatory;

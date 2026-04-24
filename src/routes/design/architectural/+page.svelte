@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { listing, type FloorKey } from '$lib/content';
+  import { listing, type Camera, type FloorKey } from '$lib/content';
   import FloorSlider from '$lib/components/FloorSlider.svelte';
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
+  import Lightbox from '$lib/components/Lightbox.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
@@ -13,6 +14,7 @@
   onMount(() => prefetchSvgs(listing.floors.map((f) => f.svg)));
 
   let selected = $state<FloorKey>('G');
+  let openCamera = $state<Camera | null>(null);
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
   // Guard with `browser` — searchParams can't be read during prerender.
   const showContact = $derived(
@@ -106,7 +108,12 @@
             {#if current.summary}<span class="sum">— {current.summary}</span>{/if}
           </div>
           <div class="plan-body">
-            <FloorPlanViewer src={current.svg} title={current.title} />
+            <FloorPlanViewer
+              src={current.svg}
+              title={current.title}
+              cameras={current.cameras}
+              onCameraOpen={(c) => (openCamera = c)}
+            />
           </div>
         </div>
         {#if current.rooms?.length}
@@ -134,6 +141,8 @@
     </section>
   {/if}
 </div>
+
+<Lightbox camera={openCamera} onClose={() => (openCamera = null)} />
 
 <style>
   .variant {
