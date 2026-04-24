@@ -5,8 +5,12 @@
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
+  onMount(() => prefetchSvgs(listing.floors.map((f) => f.svg)));
 
   let selected = $state<FloorKey>('G');
   const current = $derived(listing.floors.find((f) => f.key === selected) ?? listing.floors[3]);
@@ -87,6 +91,14 @@
         <FloorSlider floors={listing.floors} {selected} onSelect={(k) => (selected = k)} />
       </div>
       <div class="plan-layout">
+        <div class="slider-desktop">
+          <FloorSlider
+            floors={listing.floors}
+            {selected}
+            onSelect={(k) => (selected = k)}
+            orientation="vertical"
+          />
+        </div>
         <div class="plan">
           <div class="plan-head">
             <span class="mono tiny">{current.key}</span>
@@ -97,22 +109,14 @@
             <FloorPlanViewer src={current.svg} title={current.title} />
           </div>
         </div>
-        <div class="slider-desktop">
-          <FloorSlider
-            floors={listing.floors}
-            {selected}
-            onSelect={(k) => (selected = k)}
-            orientation="vertical"
-          />
-        </div>
+        {#if current.rooms?.length}
+          <ul class="rooms">
+            {#each current.rooms as r}
+              <li>{r}</li>
+            {/each}
+          </ul>
+        {/if}
       </div>
-      {#if current.rooms?.length}
-        <ul class="rooms">
-          {#each current.rooms as r}
-            <li>{r}</li>
-          {/each}
-        </ul>
-      {/if}
     </div>
   </section>
 
@@ -364,8 +368,9 @@
 
   @media (min-width: 900px) {
     .plan-layout {
-      grid-template-columns: 1fr auto;
-      align-items: stretch;
+      grid-template-columns: auto 1fr 14rem;
+      align-items: start;
+      gap: 1.25rem;
     }
   }
 
@@ -411,16 +416,16 @@
   .rooms {
     list-style: none;
     padding: 0;
-    margin: 1.5rem 0 0;
+    margin: 0;
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
     font: 500 0.8rem var(--font-mono);
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 900px) {
     .rooms {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
     }
   }
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { loadSvgText } from '$lib/floor-prefetch';
+
   interface Props {
     src: string;
     title: string;
@@ -18,8 +20,8 @@
   let vbY = $state(0);
   let vbW = $state(1000);
   let vbH = $state(1000);
-  // Tight content bounding box (excludes the background rect). These default
-  // to the viewBox and get refined to the geometry's real extent after mount.
+  // Content bbox in user coords — the authored viewBox tends to have empty
+  // margin around the geometry, so we fit to the real extent instead.
   let contentX = $state(0);
   let contentY = $state(0);
   let contentW = $state(1000);
@@ -33,42 +35,30 @@
   function fit() {
     if (!viewport) return;
     const rect = viewport.getBoundingClientRect();
+    // Zero width/height happens during initial layout or when the element is
+    // hidden (display:none ancestor, fullscreen transition). The ResizeObserver
+    // will call fit again once the viewport has real dimensions.
     if (!rect.width || !rect.height) return;
-    // Fit the content bbox (not the full viewBox) so empty margins are trimmed.
     const s = Math.min(rect.width / contentW, rect.height / contentH) * 0.98;
     scale = s;
-    // The stage is sized to the full viewBox and starts at (0, 0) in viewBox
-    // coords. We translate so the content bbox ends up centered in the viewport.
     tx = (rect.width - contentW * s) / 2 - (contentX - vbX) * s;
     ty = (rect.height - contentH * s) / 2 - (contentY - vbY) * s;
   }
 
-  // After render, measure the real geometry extent. getBBox on the <svg>
-  // returns the union bbox of all children in viewBox coords, accounting for
-  // child transforms (including the DXF exporter's scale(1,-1) flip). Since
-  // loadSvg strips the full-viewBox background <rect> and any stray outline
-  // paths before mounting, this bbox is tight to the actual drawing.
+  // Read the rendered geometry extent. Source SVGs are pre-cleaned offline
+  // (background rect and stray paths removed), so a single getBBox gives a
+  // tight content box without the intersection guards the old code needed.
   function measureContent() {
-    if (!stageEl) return;
-    const svg = stageEl.querySelector('svg') as unknown as SVGGraphicsElement | null;
+    const svg = stageEl?.querySelector('svg') as unknown as SVGGraphicsElement | null;
     if (!svg) return;
     try {
-      const bbox = svg.getBBox();
-      if (bbox.width > 0 && bbox.height > 0) {
-        // Intersect with the viewBox as a safety net — if any stray geometry
-        // survived the text-level scrub in loadSvg(), don't let it distort
-        // the fit. Clamping to the viewBox is what the author intended.
-        const x0 = Math.max(bbox.x, vbX);
-        const y0 = Math.max(bbox.y, vbY);
-        const x1 = Math.min(bbox.x + bbox.width, vbX + vbW);
-        const y1 = Math.min(bbox.y + bbox.height, vbY + vbH);
-        if (x1 > x0 && y1 > y0) {
-          contentX = x0;
-          contentY = y0;
-          contentW = x1 - x0;
-          contentH = y1 - y0;
-          return;
-        }
+      const b = svg.getBBox();
+      if (b.width > 0 && b.height > 0) {
+        contentX = b.x;
+        contentY = b.y;
+        contentW = b.width;
+        contentH = b.height;
+        return;
       }
     } catch {
       // getBBox can throw on detached elements; fall through to viewBox.
@@ -79,13 +69,18 @@
     contentH = vbH;
   }
 
-  // Load SVG as text, extract viewBox, render inline.
+  // Incremented on every load request. Any in-flight load whose token no
+  // longer matches has been superseded by a newer src and must not commit —
+  // otherwise an earlier slow fetch can overwrite a later fast one.
+  let loadToken = 0;
+
   async function loadSvg(url: string) {
+    const token = ++loadToken;
     loaded = false;
     svgMarkup = '';
     try {
-      const res = await fetch(url);
-      const text = await res.text();
+      const text = await loadSvgText(url);
+      if (token !== loadToken) return;
       const match = text.match(/viewBox\s*=\s*"([^"]+)"/);
       if (match) {
         const parts = match[1].trim().split(/[\s,]+/).map(Number);
@@ -94,61 +89,24 @@
           vbY = parts[1];
           vbW = parts[2];
           vbH = parts[3];
-          // Seed content bbox with viewBox as a safe fallback.
           contentX = vbX;
           contentY = vbY;
           contentW = vbW;
           contentH = vbH;
         }
       }
-      // Strip the outer <?xml ... ?> declaration so we can embed, and remove the
-      // full-viewBox background <rect> the DXF exporter inserts as the first
-      // child — otherwise getBBox() on the svg would return the viewBox bounds
-      // (with all its empty margin) instead of the real geometry bbox.
-      let cleaned = text
-        .replace(/^<\?xml[^?]*\?>\s*/, '')
-        .replace(/<rect\b[^>]*fill\s*=\s*"white"[^>]*\/>/i, '');
-
-      // DXF exports can contain a stray outline path spanning well beyond the
-      // authored viewBox (floor 2 has one ~3× the viewBox width). Left in,
-      // it drags the fit bbox and shrinks the real plan by a large factor.
-      // Strip any <path> whose d-attribute coord extents exceed 2× the
-      // viewBox in either axis.
-      if (vbW > 0 && vbH > 0) {
-        const strayW = vbW * 2;
-        const strayH = vbH * 2;
-        cleaned = cleaned.replace(
-          /<path\b[^>]*\bd\s*=\s*"([^"]*)"[^>]*\/>/g,
-          (match, d: string) => {
-            const nums = d.match(/-?\d+(?:\.\d+)?/g);
-            if (!nums || nums.length < 4) return match;
-            let xMin = Infinity,
-              xMax = -Infinity,
-              yMin = Infinity,
-              yMax = -Infinity;
-            for (let i = 0; i + 1 < nums.length; i += 2) {
-              const x = parseFloat(nums[i]);
-              const y = parseFloat(nums[i + 1]);
-              if (x < xMin) xMin = x;
-              if (x > xMax) xMax = x;
-              if (y < yMin) yMin = y;
-              if (y > yMax) yMax = y;
-            }
-            if (xMax - xMin > strayW || yMax - yMin > strayH) return '';
-            return match;
-          }
-        );
-      }
-
-      svgMarkup = cleaned;
+      svgMarkup = text;
       loaded = true;
-      // Wait for the DOM to mount the SVG, then measure and fit to the new
-      // floor's geometry. Each floor plan has its own extent so re-fitting on
-      // every load picks an appropriate zoom level per plan.
-      await new Promise((r) => setTimeout(r, 50));
-      measureContent();
-      fit();
+      // setTimeout (not requestAnimationFrame) because rAF is paused in
+      // background/hidden tabs — we want the plan sized correctly even when
+      // the user opens the page in a background tab.
+      setTimeout(() => {
+        if (token !== loadToken) return;
+        measureContent();
+        fit();
+      }, 0);
     } catch (e) {
+      if (token !== loadToken) return;
       console.error('failed to load floor plan', url, e);
     }
   }
@@ -191,7 +149,10 @@
     dragging = false;
     try {
       (e.currentTarget as Element).releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch {
+      // Some browsers throw if the pointer was already released (e.g. when
+      // pointercancel fires before pointerup). Safe to ignore.
+    }
   }
 
   function zoomBy(factor: number) {
@@ -209,9 +170,11 @@
   async function toggleFullscreen() {
     if (!viewerEl) return;
     try {
-      if (document.fullscreenElement) {
+      // Only exit fullscreen if *our* viewer is the one in fullscreen.
+      // Otherwise we'd yank another viewer (or unrelated element) out.
+      if (document.fullscreenElement === viewerEl) {
         await document.exitFullscreen();
-      } else {
+      } else if (!document.fullscreenElement) {
         await viewerEl.requestFullscreen();
       }
     } catch (e) {
@@ -221,10 +184,7 @@
 
   function onFullscreenChange() {
     isFullscreen = document.fullscreenElement === viewerEl;
-    // Viewport size changed — re-fit so the plan scales to the new bounds.
-    requestAnimationFrame(() => {
-      fit();
-    });
+    setTimeout(fit, 0);
   }
 
   $effect(() => {
@@ -235,9 +195,21 @@
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   });
+
+  // Re-fit when the viewport resizes (window resize, layout shift, mobile
+  // browser chrome showing/hiding). Without this the plan stays scaled to
+  // whatever the viewport was at initial load and overflows or under-fills.
+  $effect(() => {
+    if (!viewport) return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(viewport);
+    return () => ro.disconnect();
+  });
 </script>
 
 <div class="viewer" bind:this={viewerEl} class:fullscreen={isFullscreen}>
+  <!-- role="img" (not "application") because pan/zoom isn't keyboard-driven;
+       screen-reader users can still reach the zoom/fit/fullscreen buttons. -->
   <div
     class="viewport"
     bind:this={viewport}
@@ -246,8 +218,8 @@
     onpointermove={onPointerMove}
     onpointerup={onPointerUp}
     onpointercancel={onPointerUp}
-    role="application"
-    aria-label="Floor plan viewer — {title}"
+    role="img"
+    aria-label="Floor plan — {title}"
   >
     <div
       class="stage"
@@ -255,6 +227,9 @@
       style="width: {vbW}px; height: {vbH}px; transform: translate({tx}px, {ty}px) scale({scale});"
     >
       {#if loaded}
+        <!-- Inlined SVG is trusted: the only caller is FloorPlanViewer, and
+             src is always a URL under /svg/ shipped with the build. If that
+             directory ever serves user-supplied content this becomes XSS. -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html svgMarkup}
       {/if}
