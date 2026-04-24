@@ -1,12 +1,27 @@
 <script lang="ts">
   import { loadSvgText } from '$lib/floor-prefetch';
+  import type { Camera } from '$lib/content';
+  import CameraPinLayer from './CameraPinLayer.svelte';
 
   interface Props {
     src: string;
     title: string;
+    cameras?: Camera[];
+    onCameraOpen?: (camera: Camera) => void;
+    editMode?: boolean;
+    onPlanClick?: (x: number, y: number) => void;
+    overlay?: import('svelte').Snippet<[{ vbX: number; vbY: number; vbW: number; vbH: number; scale: number }]>;
   }
 
-  let { src, title }: Props = $props();
+  let {
+    src,
+    title,
+    cameras,
+    onCameraOpen,
+    editMode = false,
+    onPlanClick,
+    overlay
+  }: Props = $props();
 
   let viewerEl: HTMLDivElement | undefined = $state();
   let viewport: HTMLDivElement | undefined = $state();
@@ -128,12 +143,19 @@
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
+  // Pointer-down origin in client coords for click vs drag detection.
+  let downX = 0;
+  let downY = 0;
+  let moveDist = 0;
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     dragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
+    downX = e.clientX;
+    downY = e.clientY;
+    moveDist = 0;
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   }
 
@@ -143,15 +165,32 @@
     ty += e.clientY - lastY;
     lastX = e.clientX;
     lastY = e.clientY;
+    moveDist = Math.max(
+      moveDist,
+      Math.hypot(e.clientX - downX, e.clientY - downY)
+    );
   }
 
   function onPointerUp(e: PointerEvent) {
+    const wasClick = dragging && moveDist < 4;
     dragging = false;
     try {
       (e.currentTarget as Element).releasePointerCapture(e.pointerId);
     } catch {
       // Some browsers throw if the pointer was already released (e.g. when
       // pointercancel fires before pointerup). Safe to ignore.
+    }
+    if (wasClick && editMode && onPlanClick) {
+      const svg = stageEl?.querySelector('svg') as SVGGraphicsElement | null;
+      const ctm = svg?.getScreenCTM();
+      if (svg && ctm) {
+        // createSVGPoint lives on SVGSVGElement, not the generic graphics type.
+        const pt = (svg as unknown as SVGSVGElement).createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
+        const local = pt.matrixTransform(ctm.inverse());
+        onPlanClick(local.x, local.y);
+      }
     }
   }
 
@@ -232,6 +271,20 @@
              directory ever serves user-supplied content this becomes XSS. -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html svgMarkup}
+        {#if cameras && cameras.length && onCameraOpen}
+          <CameraPinLayer
+            {cameras}
+            {vbX}
+            {vbY}
+            {vbW}
+            {vbH}
+            {scale}
+            onOpen={onCameraOpen}
+          />
+        {/if}
+        {#if overlay}
+          {@render overlay({ vbX, vbY, vbW, vbH, scale })}
+        {/if}
       {/if}
     </div>
 
@@ -297,7 +350,9 @@
     will-change: transform;
   }
 
-  .stage :global(svg) {
+  /* Style ONLY the injected plan SVG (direct child of .stage), not overlay
+     SVGs such as camera pins. */
+  .stage > :global(svg) {
     display: block;
     width: 100%;
     height: 100%;
@@ -307,17 +362,17 @@
   /* Force strokes to stay visible regardless of zoom level. The DXF-exported
      SVGs use huge coordinate systems (~60k units wide) with hairline strokes
      that would otherwise render as sub-pixel lines. */
-  .stage :global(svg path),
-  .stage :global(svg line),
-  .stage :global(svg polyline),
-  .stage :global(svg polygon),
-  .stage :global(svg rect),
-  .stage :global(svg circle) {
+  .stage > :global(svg path),
+  .stage > :global(svg line),
+  .stage > :global(svg polyline),
+  .stage > :global(svg polygon),
+  .stage > :global(svg rect),
+  .stage > :global(svg circle) {
     vector-effect: non-scaling-stroke;
   }
 
   /* Invert strokes for dark mode so lines read as light-on-dark. */
-  :global(.dark) .stage :global(svg) {
+  :global(.dark) .stage > :global(svg) {
     filter: invert(0.95) hue-rotate(180deg);
   }
 

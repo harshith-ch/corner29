@@ -2,12 +2,24 @@ export type Stat = { value: string; label: string };
 
 export type FloorKey = 'B3' | 'B2' | 'B1' | 'G' | '1' | '2' | '3' | '4';
 
+export type Camera = {
+  id: string;
+  x: number;
+  y: number;
+  heading: number;
+  fov?: number;
+  image: string;
+  title?: string;
+  caption?: string;
+};
+
 export type Floor = {
   key: FloorKey;
   title: string;
   svg: string;
   summary?: string;
   rooms?: string[];
+  cameras?: Camera[];
 };
 
 export type Listing = {
@@ -88,6 +100,44 @@ export const listing: Listing = {
         '3-person rooms × 6',
         '6-person rooms × 4',
         '12-person room × 1'
+      ],
+      cameras: [
+        {
+          id: 'g-cam-1',
+          x: 13495.96,
+          y: -14195.46,
+          heading: 90,
+          image: '/pics/DSC03509.jpg',
+          title: 'seating-1',
+          caption: 'Seating alley 1'
+        },
+        {
+          id: 'g-cam-2',
+          x: 20008.01,
+          y: -14260.93,
+          heading: 319,
+          image: '/pics/DSC03510.jpg',
+          title: 'seating-2',
+          caption: 'Open Seating'
+        },
+        {
+          id: 'g-cam-3',
+          x: 24432.84,
+          y: -14584.36,
+          heading: 241,
+          image: '/pics/DSC03511.jpg',
+          title: 'cubicles',
+          caption: 'Cubicle Seats'
+        },
+        {
+          id: 'g-cam-4',
+          x: 29136.36,
+          y: -13847.63,
+          heading: 317,
+          image: '/pics/DSC03512.jpg',
+          title: 'alley-and-meeting-rooms',
+          caption: 'Passage and meeting rooms'
+        }
       ]
     },
     {
