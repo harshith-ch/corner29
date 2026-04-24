@@ -162,37 +162,77 @@
                 {@const inv = scale > 0 ? 1 / scale : 1}
                 {@const isSel = selectedId === pin.id}
                 {@const fov = pin.fov ?? 60}
+                {@const gradId = `edit-cone-grad-${pin.id}`}
                 <div
                   class="epin"
                   class:selected={isSel}
                   style="left: {pct(pin.x, vbX, vbW)}%; top: {pct(pin.y, vbY, vbH)}%;"
                 >
-                  <div class="epin-visual" style="transform: scale({inv});">
-                    <svg
-                      class="econe"
-                      viewBox="-50 -50 100 100"
-                      style="transform: translate(-50%, -50%) rotate({pin.heading}deg);"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d={conePath(fov, 44)}
-                        fill="currentColor"
-                        fill-opacity="0.22"
-                        stroke="currentColor"
-                        stroke-opacity="0.65"
-                        stroke-width="1.2"
-                      />
-                    </svg>
+                  <div class="epin-visual" style="transform: translate(-50%, -50%) scale({inv});">
+                    <span class="cone-wrap" style="transform: rotate({pin.heading}deg);" aria-hidden="true">
+                      <svg class="cone" viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                          <radialGradient id={gradId} cx="0" cy="0" r="38" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="currentColor" stop-opacity="0.85" />
+                            <stop offset="0.55" stop-color="currentColor" stop-opacity="0.4" />
+                            <stop offset="1" stop-color="currentColor" stop-opacity="0.05" />
+                          </radialGradient>
+                        </defs>
+                        <path d={conePath(fov, 38)} fill="url(#{gradId})" />
+                        <path
+                          d={conePath(fov, 38)}
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-opacity="0.95"
+                          stroke-width="1.6"
+                          stroke-linejoin="round"
+                          stroke-linecap="round"
+                        />
+                      </svg>
+                    </span>
+
                     <button
                       type="button"
-                      class="edot"
+                      class="glyph-wrap"
                       onclick={(e) => {
                         e.stopPropagation();
                         selectedId = pin.id;
                       }}
                       onpointerdown={(e) => e.stopPropagation()}
                       aria-label={`Select pin ${pin.id}`}
-                    >{pin.id.split('-').pop()}</button>
+                    >
+                      <svg
+                        class="glyph glyph-light"
+                        viewBox="0 0 24 24"
+                        preserveAspectRatio="xMidYMid meet"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linejoin="round"
+                        stroke-linecap="round"
+                      >
+                        <path
+                          d="M3.5 7.5h3.25l1.5-2h7.5l1.5 2h3.25a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"
+                        />
+                        <circle cx="12" cy="13" r="3.75" />
+                      </svg>
+                      <svg
+                        class="glyph glyph-dark"
+                        viewBox="0 0 24 24"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <path
+                          fill="currentColor"
+                          fill-rule="evenodd"
+                          clip-rule="evenodd"
+                          d="M9 4 7.5 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L15 4H9Zm3 4.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
+                        />
+                        <circle cx="12" cy="12.5" r="1.6" fill="currentColor" />
+                      </svg>
+                    </button>
+
+                    <span class="id-chip" aria-hidden="true">{pin.id.split('-').pop()}</span>
+
                     {#if isSel}
                       <button
                         type="button"
@@ -532,46 +572,117 @@
   }
 
   .epin {
+    --accent: #dc2626;
+    --halo: rgba(255, 255, 255, 0.92);
+    --ink: #0f172a;
     position: absolute;
-    color: #dc2626;
+    width: 0;
+    height: 0;
+    color: var(--accent);
     pointer-events: none;
   }
 
+  :global(.dark) .epin {
+    --accent: #f87171;
+    --halo: rgba(10, 15, 25, 0.85);
+    --ink: #f8fafc;
+  }
+
   .epin.selected {
-    color: #2563eb;
+    --accent: #2563eb;
+  }
+
+  :global(.dark) .epin.selected {
+    --accent: #93c5fd;
   }
 
   .epin-visual {
     position: absolute;
     left: 0;
     top: 0;
+    display: block;
+    width: 0;
+    height: 0;
     transform-origin: 0 0;
     pointer-events: none;
   }
 
-  .econe {
+  .cone-wrap {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 88px;
-    height: 88px;
+    left: -55px;
+    top: -55px;
+    width: 110px;
+    height: 110px;
+    transform-origin: center;
     pointer-events: none;
+    display: block;
   }
 
-  .edot {
+  .cone {
+    display: block;
+    overflow: visible;
+  }
+
+  .glyph-wrap {
+    position: absolute;
+    left: -10px;
+    top: -10px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: block;
+    pointer-events: auto;
+    cursor: pointer;
+    color: var(--ink);
+    filter: drop-shadow(0 0 1.5px var(--halo)) drop-shadow(0 0 1.5px var(--halo));
+    transition: transform 120ms ease, color 120ms ease;
+    transform-origin: center;
+  }
+
+  .epin.selected .glyph-wrap,
+  .glyph-wrap:hover,
+  .glyph-wrap:focus-visible {
+    color: var(--accent);
+  }
+
+  .glyph-wrap:hover,
+  .glyph-wrap:focus-visible {
+    transform: scale(1.15);
+  }
+
+  .glyph {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .glyph-dark {
+    display: none;
+  }
+
+  :global(.dark) .glyph-light {
+    display: none;
+  }
+
+  :global(.dark) .glyph-dark {
+    display: block;
+  }
+
+  .id-chip {
     position: absolute;
     left: 0;
-    top: 0;
-    transform: translate(-50%, -50%);
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    background: currentColor;
+    top: 14px;
+    transform: translate(-50%, 0);
+    padding: 1px 5px;
+    font: 600 0.62rem var(--font-mono);
     color: #fff;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    font: 600 0.7rem var(--font-mono);
-    cursor: pointer;
-    pointer-events: auto;
+    background: var(--accent);
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px var(--halo);
   }
 
   .ehandle {
