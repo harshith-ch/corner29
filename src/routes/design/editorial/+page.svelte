@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { listing, type FloorKey } from '$lib/content';
+  import { listing, galleryImages, facadeImages, type FloorKey } from '$lib/content';
   import FloorSlider from '$lib/components/FloorSlider.svelte';
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import Gallery from '$lib/components/Gallery.svelte';
+  import FacadeShowcase from '$lib/components/FacadeShowcase.svelte';
   import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
@@ -23,6 +25,7 @@
       { id: 'overview', label: 'Opening' },
       { id: 'location', label: 'Where' },
       { id: 'floors', label: 'Floor by floor' },
+      { id: 'gallery', label: 'Gallery' },
       ...(showContact ? [{ id: 'contact', label: 'To visit' }] : [])
     ]
   );
@@ -66,6 +69,13 @@
         {/each}
       </div>
     </div>
+
+    {#if facadeImages.length}
+      <figure class="plate">
+        <FacadeShowcase images={facadeImages} eyebrow="A portrait" />
+        <figcaption>A portrait of the building, in rotation.</figcaption>
+      </figure>
+    {/if}
   </section>
 
   <!-- Location -->
@@ -128,6 +138,15 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section" id="gallery">
+    <div class="section-head">
+      <h2>Gallery</h2>
+    </div>
+    <p class="p">A closer look at the rooms — meeting suites, open floors, and the lobbies that knit it together. Click any frame; ← / → to step.</p>
+    <Gallery images={galleryImages} />
   </section>
 
   <!-- Contact -->
@@ -259,6 +278,17 @@
     font: 400 1.15rem / 1.7 var(--serif);
     opacity: 0.8;
     margin: 0;
+  }
+
+  .plate {
+    margin: 3rem 0 0;
+    --facade-radius: 0;
+  }
+
+  .plate figcaption {
+    margin-top: 0.75rem;
+    font: 400 italic 0.9rem / 1.5 var(--serif);
+    opacity: 0.6;
   }
 
   .pull-quote {

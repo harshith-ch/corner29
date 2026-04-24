@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { listing, type FloorKey } from '$lib/content';
+  import { listing, galleryImages, facadeImages, type FloorKey } from '$lib/content';
   import FloorSlider from '$lib/components/FloorSlider.svelte';
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import Gallery from '$lib/components/Gallery.svelte';
+  import FacadeShowcase from '$lib/components/FacadeShowcase.svelte';
   import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
@@ -23,6 +25,7 @@
       { id: 'overview', label: 'Overview' },
       { id: 'location', label: 'Location' },
       { id: 'floors', label: 'Floor plans' },
+      { id: 'gallery', label: 'Gallery' },
       ...(showContact ? [{ id: 'contact', label: 'Visit' }] : [])
     ]
   );
@@ -54,6 +57,12 @@
         </div>
       {/each}
     </div>
+
+    {#if facadeImages.length}
+      <div class="facade-wrap">
+        <FacadeShowcase images={facadeImages} eyebrow="Inside Corner29" />
+      </div>
+    {/if}
   </section>
 
   <!-- Location -->
@@ -110,6 +119,13 @@
         {/if}
       </div>
     </div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section" id="gallery">
+    <h2>A look around</h2>
+    <p class="sub">Interior shots across the floors — click any photo to view full-screen. Use ← / → to step through.</p>
+    <Gallery images={galleryImages} />
   </section>
 
   <!-- Contact -->
@@ -259,6 +275,11 @@
 
   .cta:hover {
     transform: translateY(-2px);
+  }
+
+  .facade-wrap {
+    margin-top: 2.25rem;
+    --facade-radius: 1.25rem;
   }
 
   .stat-cards {

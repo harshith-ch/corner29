@@ -331,3 +331,53 @@ export const listing: Listing = {
     'Equipment + store rooms'
   ]
 };
+
+export type GalleryImage = {
+  src: string;
+  caption: string;
+  floor: string;
+  floorKey: FloorKey;
+};
+
+// Basement parking floors are excluded from the public gallery.
+const GALLERY_EXCLUDED_FLOORS: FloorKey[] = ['B1', 'B2', 'B3'];
+
+export const galleryImages: GalleryImage[] = listing.floors
+  .filter((f) => !GALLERY_EXCLUDED_FLOORS.includes(f.key))
+  .flatMap((f) =>
+    (f.cameras ?? []).map((c) => ({
+      src: c.image,
+      caption: c.caption ?? c.title ?? f.title,
+      floor: f.title,
+      floorKey: f.key
+    }))
+  );
+
+// Hero images for the overview showcase. The facade shot lives outside the
+// floor-by-floor camera data.
+export const facadeImages: GalleryImage[] = [
+  {
+    src: '/pics/facade/DSC03461-1.jpg',
+    caption: 'The facade',
+    floor: 'Exterior',
+    floorKey: 'G'
+  },
+  {
+    src: '/pics/ground/DSC03519.jpg',
+    caption: 'Lobby',
+    floor: 'Ground Floor',
+    floorKey: 'G'
+  },
+  {
+    src: '/pics/ground/DSC03486.jpg',
+    caption: 'Conference Room',
+    floor: 'Ground Floor',
+    floorKey: 'G'
+  },
+  {
+    src: '/pics/first/DSC03561.jpg',
+    caption: 'Open Seating',
+    floor: '1st Floor',
+    floorKey: '1'
+  }
+];

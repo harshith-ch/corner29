@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { listing, type Camera, type FloorKey } from '$lib/content';
+  import { listing, galleryImages, facadeImages, type Camera, type FloorKey } from '$lib/content';
   import FloorSlider from '$lib/components/FloorSlider.svelte';
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
   import Lightbox from '$lib/components/Lightbox.svelte';
   import ContactForm from '$lib/components/ContactForm.svelte';
   import LocationMap from '$lib/components/LocationMap.svelte';
   import SectionNav from '$lib/components/SectionNav.svelte';
+  import Gallery from '$lib/components/Gallery.svelte';
+  import FacadeShowcase from '$lib/components/FacadeShowcase.svelte';
   import { prefetchSvgs } from '$lib/floor-prefetch';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
@@ -26,6 +28,7 @@
       { id: 'overview', label: 'Overview' },
       { id: 'location', label: 'Location' },
       { id: 'floors', label: 'Plans' },
+      { id: 'gallery', label: 'Gallery' },
       ...(showContact ? [{ id: 'contact', label: 'Enquiry' }] : [])
     ]
   );
@@ -61,6 +64,11 @@
         {/each}
       </div>
     </div>
+    {#if facadeImages.length}
+      <div class="col-hero">
+        <FacadeShowcase images={facadeImages} eyebrow="Corner29 · The building" />
+      </div>
+    {/if}
   </section>
 
   <!-- Location -->
@@ -134,11 +142,24 @@
     </div>
   </section>
 
+  <!-- Gallery -->
+  <section class="section grid" id="gallery">
+    <div class="col-meta">
+      <div class="ref mono">04 — Gallery</div>
+      <div class="floor-count">{galleryImages.length} frames</div>
+    </div>
+    <div class="col-span">
+      <h2>Gallery</h2>
+      <p class="sub">Interior shots across the floors. Click any frame; use ← / → to step through.</p>
+      <Gallery images={galleryImages} />
+    </div>
+  </section>
+
   <!-- Contact -->
   {#if showContact}
     <section class="section grid" id="contact">
       <div class="col-meta">
-        <div class="ref mono">04 — Enquiry</div>
+        <div class="ref mono">05 — Enquiry</div>
       </div>
       <div class="col-span contact-col">
         <h2>Visit the site</h2>
@@ -213,6 +234,18 @@
   @media (min-width: 900px) {
     .col-side {
       grid-column: span 4;
+    }
+  }
+
+  .col-hero {
+    grid-column: span 12;
+    --facade-radius: 0;
+  }
+
+  @media (min-width: 900px) {
+    .col-hero {
+      grid-column: 3 / span 10;
+      margin-top: 1.5rem;
     }
   }
 
@@ -477,7 +510,8 @@
     border-bottom-color: rgba(255, 255, 255, 0.12);
   }
 
-  .contact-col .sub {
+  .contact-col .sub,
+  .col-span .sub {
     font: 400 0.95rem var(--font-sans);
     opacity: 0.7;
     margin: -0.5rem 0 1.5rem;
