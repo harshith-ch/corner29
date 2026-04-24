@@ -13,9 +13,12 @@
   let previousFocus: HTMLElement | null = null;
 
   const current = $derived(openIndex !== null ? images[openIndex] : null);
+  const isOpen = $derived(openIndex !== null);
 
+  // Keyed on isOpen (boolean), not openIndex (number), so nav between images
+  // doesn't re-run setup/teardown and cause focus/scroll-lock thrash.
   $effect(() => {
-    if (openIndex === null) return;
+    if (!isOpen) return;
     previousFocus = document.activeElement as HTMLElement | null;
     queueMicrotask(() => closeBtn?.focus());
     const prevOverflow = document.body.style.overflow;
@@ -41,6 +44,31 @@
     openIndex = (openIndex - 1 + images.length) % images.length;
   }
 
+  // Cycle Tab focus inside the dialog (same pattern as Lightbox.svelte).
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function trapTab(e: KeyboardEvent) {
+    if (!dialogEl) return;
+    const focusables = Array.from(
+      dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE)
+    ).filter((el) => !el.hasAttribute('hidden'));
+    if (focusables.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || !dialogEl.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -51,6 +79,8 @@
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       prev();
+    } else if (e.key === 'Tab') {
+      trapTab(e);
     }
   }
 

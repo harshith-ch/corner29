@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import type { GalleryImage } from '$lib/content';
 
   interface Props {
@@ -13,11 +12,13 @@
   let idx = $state(0);
   let paused = $state(false);
 
-  onMount(() => {
+  // $effect (not onMount) so the interval re-subscribes if intervalMs changes.
+  $effect(() => {
     if (images.length <= 1) return;
+    const ms = intervalMs;
     const id = setInterval(() => {
       if (!paused) idx = (idx + 1) % images.length;
-    }, intervalMs);
+    }, ms);
     return () => clearInterval(id);
   });
 </script>
@@ -49,15 +50,14 @@
     </div>
   </div>
   {#if images.length > 1}
-    <div class="dots" role="tablist" aria-label="Choose image">
+    <div class="dots" aria-label="Choose image">
       {#each images as _img, i (i)}
         <button
           type="button"
           class="dot"
           class:active={i === idx}
-          role="tab"
-          aria-selected={i === idx}
           aria-label={`Show image ${i + 1}`}
+          aria-current={i === idx ? 'true' : undefined}
           onclick={() => (idx = i)}
         ></button>
       {/each}
@@ -179,5 +179,13 @@
   .dot:focus-visible {
     outline: 2px solid #fff;
     outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide,
+    .slide.active {
+      transform: none;
+      transition: opacity 150ms linear;
+    }
   }
 </style>
