@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { Camera } from '$lib/content';
-  import { onMount } from 'svelte';
 
   interface Props {
     camera: Camera | null;
@@ -9,6 +8,7 @@
 
   let { camera, onClose }: Props = $props();
 
+  let dialogEl: HTMLDivElement | undefined = $state();
   let closeBtn: HTMLButtonElement | undefined = $state();
   let previousFocus: HTMLElement | null = null;
 
@@ -17,16 +17,52 @@
     previousFocus = document.activeElement as HTMLElement | null;
     // Focus the close button after the dialog renders so Esc/Enter/Tab land in-dialog.
     queueMicrotask(() => closeBtn?.focus());
+
+    // Lock body scroll while the dialog is open. Preserve the previous value
+    // so we don't clobber a lock set elsewhere (e.g. a parent modal).
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     return () => {
+      document.body.style.overflow = prevOverflow;
       previousFocus?.focus?.();
       previousFocus = null;
     };
   });
 
+  // Keep Tab focus cycling inside the dialog. Standard modal pattern: on Tab,
+  // if focus is on the last focusable element, wrap to the first (and vice
+  // versa for Shift+Tab).
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function trapTab(e: KeyboardEvent) {
+    if (!dialogEl) return;
+    const focusables = Array.from(
+      dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE)
+    ).filter((el) => !el.hasAttribute('hidden'));
+    if (focusables.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || !dialogEl.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
+    } else if (e.key === 'Tab') {
+      trapTab(e);
     }
   }
 
@@ -41,6 +77,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
+    bind:this={dialogEl}
     class="backdrop"
     role="dialog"
     aria-modal="true"

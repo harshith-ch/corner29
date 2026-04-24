@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Camera } from '$lib/content';
+  import { conePath, pct } from '$lib/geometry';
 
   interface Props {
     cameras: Camera[];
@@ -14,22 +15,6 @@
   let { cameras, vbX, vbY, vbW, vbH, scale, onOpen }: Props = $props();
 
   const inv = $derived(scale > 0 ? 1 / scale : 1);
-
-  function pct(value: number, origin: number, extent: number) {
-    return ((value - origin) / extent) * 100;
-  }
-
-  // Pie-slice path centered at 0,0, pointing up (screen -Y). Outer rotation
-  // handles heading. Drawn in viewBox "-50 -50 100 100".
-  function conePath(angle: number, radius: number) {
-    const half = (angle / 2) * (Math.PI / 180);
-    const x1 = -Math.sin(half) * radius;
-    const y1 = -Math.cos(half) * radius;
-    const x2 = Math.sin(half) * radius;
-    const y2 = -Math.cos(half) * radius;
-    const large = angle > 180 ? 1 : 0;
-    return `M0 0 L${x1.toFixed(2)} ${y1.toFixed(2)} A${radius} ${radius} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
-  }
 </script>
 
 <div class="pin-layer">

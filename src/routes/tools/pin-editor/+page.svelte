@@ -2,6 +2,7 @@
   import { listing, type Camera, type FloorKey } from '$lib/content';
   import FloorSlider from '$lib/components/FloorSlider.svelte';
   import FloorPlanViewer from '$lib/components/FloorPlanViewer.svelte';
+  import { conePath, pct } from '$lib/geometry';
 
   type DraftPin = Camera;
 
@@ -42,6 +43,8 @@
   function update<K extends keyof Camera>(id: string, key: K, value: Camera[K]) {
     const next = pins.map((p) => (p.id === id ? { ...p, [key]: value } : p));
     byFloor = { ...byFloor, [selected]: next };
+    // Keep selection attached to the pin across an id rename.
+    if (key === 'id' && selectedId === id) selectedId = value as string;
   }
 
   function remove(id: string) {
@@ -111,20 +114,6 @@
 
   function onWindowUp() {
     drag = null;
-  }
-
-  function conePath(angle: number, radius: number) {
-    const half = (angle / 2) * (Math.PI / 180);
-    const x1 = -Math.sin(half) * radius;
-    const y1 = -Math.cos(half) * radius;
-    const x2 = Math.sin(half) * radius;
-    const y2 = -Math.cos(half) * radius;
-    const large = angle > 180 ? 1 : 0;
-    return `M0 0 L${x1.toFixed(2)} ${y1.toFixed(2)} A${radius} ${radius} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
-  }
-
-  function pct(value: number, origin: number, extent: number) {
-    return ((value - origin) / extent) * 100;
   }
 </script>
 

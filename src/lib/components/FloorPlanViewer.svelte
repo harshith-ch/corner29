@@ -172,7 +172,9 @@
   }
 
   function onPointerUp(e: PointerEvent) {
-    const wasClick = dragging && moveDist < 4;
+    // 6px tolerates hand tremor on high-DPI trackpads; 4px suppressed taps
+    // when users clicked at the moment of micro-drift.
+    const wasClick = dragging && moveDist < 6;
     dragging = false;
     try {
       (e.currentTarget as Element).releasePointerCapture(e.pointerId);
@@ -183,13 +185,17 @@
     if (wasClick && editMode && onPlanClick) {
       const svg = stageEl?.querySelector('svg') as SVGGraphicsElement | null;
       const ctm = svg?.getScreenCTM();
-      if (svg && ctm) {
-        // createSVGPoint lives on SVGSVGElement, not the generic graphics type.
-        const pt = (svg as unknown as SVGSVGElement).createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        const local = pt.matrixTransform(ctm.inverse());
-        onPlanClick(local.x, local.y);
+      if (svg && ctm && Number.isFinite(ctm.a) && ctm.a !== 0 && ctm.d !== 0) {
+        try {
+          // createSVGPoint lives on SVGSVGElement, not the generic graphics type.
+          const pt = (svg as unknown as SVGSVGElement).createSVGPoint();
+          pt.x = e.clientX;
+          pt.y = e.clientY;
+          const local = pt.matrixTransform(ctm.inverse());
+          onPlanClick(local.x, local.y);
+        } catch {
+          // ctm.inverse() throws on singular matrices. Drop the click.
+        }
       }
     }
   }
